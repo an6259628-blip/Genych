@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🛡️ Админ-панель — LocationPrivacyDemo</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0d1117;
+            color: #c9d1d9;
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            padding: 30px 0;
+            border-bottom: 1px solid #30363d;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            font-size: 28px;
+            color: #58a6ff;
+            margin-bottom: 10px;
+        }
+        .header p { color: #8b949e; }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        .stat-card .number {
+            font-size: 42px;
+            font-weight: bold;
+            color: #58a6ff;
+        }
+        .stat-card .label { color: #8b949e; margin-top: 8px; font-size: 14px; }
+        .stat-card.protected .number { color: #3fb950; }
+        .stat-card.unprotected .number { color: #f85149; }
+        .stat-card.root .number { color: #d2a8ff; }
+        .stat-card.accessibility .number { color: #d29922; }
+        .devices-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        .device-card {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+        .device-card:hover {
+            border-color: #58a6ff;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(88,166,255,0.15);
+        }
+        .device-card .device-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .device-card .device-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: #58a6ff;
+        }
+        .device-card .device-model {
+            color: #8b949e;
+            font-size: 13px;
+            margin-bottom: 12px;
+        }
+        .device-card .device-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            font-size: 13px;
+        }
+        .device-card .info-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .device-card .last-seen {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #21262d;
+            font-size: 12px;
+            color: #8b949e;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .badge-protected { background: #238636; color: white; }
+        .badge-unprotected { background: #da3633; color: white; }
+        .badge-root { background: #6e40c8; color: white; }
+        .badge-no-root { background: #30363d; color: #8b949e; }
+        .badge-accessibility { background: #998800; color: white; }
+        .badge-off { background: #30363d; color: #8b949e; }
+        .btn-delete {
+            background: transparent;
+            color: #f85149;
+            border: 1px solid #f85149;
+            padding: 4px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.2s;
+        }
+        .btn-delete:hover { background: #f85149; color: white; }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #8b949e;
+        }
+        .empty-state .icon { font-size: 48px; margin-bottom: 15px; }
+        .empty-state p { font-size: 16px; }
+        .auto-refresh {
+            text-align: center;
+            padding: 15px;
+            color: #8b949e;
+            font-size: 13px;
+        }
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 700px;
+            max-height: 85vh;
+            overflow-y: auto;
+            padding: 30px;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #30363d;
+        }
+        .modal-header h2 { color: #58a6ff; font-size: 22px; }
+        .modal-close {
+            background: none;
+            border: none;
+            color: #8b949e;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 5px;
+        }
+        .modal-close:hover { color: #f85149; }
+        .modal-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 25px;
+        }
+        .modal-info-item {
+            background: #0d1117;
+            padding: 12px;
+            border-radius: 8px;
+        }
+        .modal-info-item .label { color: #8b949e; font-size: 12px; margin-bottom: 4px; }
+        .modal-info-item .value { font-size: 15px; font-weight: 500; }
+        .history-section h3 {
+            color: #58a6ff;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+        .history-item {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 10px;
+            margin-bottom: 12px;
+            overflow: hidden;
+        }
+        .history-header {
+            padding: 12px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .history-header:hover { background: #1c2129; }
+        .history-header .action { font-weight: 600; }
+        .history-header .timestamp { color: #8b949e; font-size: 13px; }
+        .history-stats { display: flex; gap: 10px; }
+        .history-stats span { font-size: 12px; }
+        .history-steps {
+            display: none;
+            padding: 15px;
+            border-top: 1px solid #30363d;
+        }
+        .history-steps.open { display: block; }
+        .step-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            padding: 6px 0;
+            font-size: 13px;
+            border-bottom: 1px solid #21262d;
+        }
+        .step-item:last-child { border-bottom: none; }
+        .step-emoji { flex-shrink: 0; width: 20px; text-align: center; }
+        .step-name { flex: 1; }
+        .step-note { color: #f85149; font-size: 12px; margin-top: 2px; }
+        @media (max-width: 768px) {
+            .devices-grid { grid-template-columns: 1fr; }
+            .modal { padding: 20px; }
+            .modal-info { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🛡️ Админ-панель LocationPrivacyDemo</h1>
+        <p>Мониторинг устройств и статуса защиты приватности</p>
+    </div>
+
+    <div class="stats">
+        <div class="stat-card">
+            <div class="number" id="totalDevices">0</div>
+            <div class="label">Всего устройств</div>
+        </div>
+        <div class="stat-card protected">
+            <div class="number" id="protectedDevices">0</div>
+            <div class="label">🔒 Защищены</div>
+        </div>
+        <div class="stat-card unprotected">
+            <div class="number" id="unprotectedDevices">0</div>
+            <div class="label">🔓 Не защищены</div>
+        </div>
+        <div class="stat-card root">
+            <div class="number" id="rootDevices">0</div>
+            <div class="label">🔑 С Root</div>
+        </div>
+        <div class="stat-card accessibility">
+            <div class="number" id="accessDevices">0</div>
+            <div class="label">♿ Авто-режим</div>
+        </div>
+    </div>
+
+    <div id="devicesContainer">
+        <div class="empty-state">
+            <div class="icon">📱</div>
+            <p>Загрузка устройств...</p>
+        </div>
+    </div>
+
+    <div class="auto-refresh">
+        🔄 Автообновление каждые 10 секунд
+    </div>
+
+    <!-- Modal -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal" id="modalContent">
+            <!-- Filled by JS -->
+        </div>
+    </div>
+
+    <script>
+        let allDevices = [];
+
+        async function loadDevices() {
+            try {
+                const response = await fetch('/api/devices');
+                allDevices = await response.json();
+
+                // Stats
+                document.getElementById('totalDevices').textContent = allDevices.length;
+                document.getElementById('protectedDevices').textContent = allDevices.filter(d => d.protected).length;
+                document.getElementById('unprotectedDevices').textContent = allDevices.filter(d => !d.protected).length;
+                document.getElementById('rootDevices').textContent = allDevices.filter(d => d.has_root).length;
+                document.getElementById('accessDevices').textContent = allDevices.filter(d => d.has_accessibility).length;
+
+                // Grid
+                const container = document.getElementById('devicesContainer');
+                if (allDevices.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <div class="icon">📱</div>
+                            <p>Ожидание устройств... Установите APK на телефон.</p>
+                        </div>`;
+                    return;
+                }
+
+                container.innerHTML = '<div class="devices-grid">' + allDevices.map(d => {
+                    const statusBadge = d.protected
+                        ? '<span class="badge badge-protected">🔒 Защищён</span>'
+                        : '<span class="badge badge-unprotected">🔓 Не защищён</span>';
+                    const rootBadge = d.has_root
+                        ? '<span class="badge badge-root">✅ Root</span>'
+                        : '<span class="badge badge-no-root">❌ Без root</span>';
+                    const accessBadge = d.has_accessibility
+                        ? '<span class="badge badge-accessibility">♿ Вкл</span>'
+                        : '<span class="badge badge-off">Выкл</span>';
+
+                    return `
+                    <div class="device-card" onclick="openDeviceDetails('${d.device_id}')">
+                        <div class="device-header">
+                            <span class="device-name">${d.brand || 'Unknown'}</span>
+                            ${statusBadge}
+                        </div>
+                        <div class="device-model">${d.model || 'N/A'} · Android ${d.android_version || '?'} · v${d.app_version || '?'}</div>
+                        <div class="device-info">
+                            <div class="info-item">🔑 ${rootBadge}</div>
+                            <div class="info-item">♿ ${accessBadge}</div>
+                        </div>
+                        <div class="last-seen">
+                            <span>🕐 ${formatTime(d.last_seen)}</span>
+                            <button class="btn-delete" onclick="event.stopPropagation(); deleteDevice('${d.device_id}')">Удалить</button>
+                        </div>
+                    </div>`;
+                }).join('') + '</div>';
+
+            } catch (e) {
+                console.error('Error:', e);
+            }
+        }
+
+        function formatTime(ts) {
+            if (!ts) return 'N/A';
+            const d = new Date(ts.replace(' ', 'T'));
+            const now = new Date();
+            const diff = (now - d) / 1000; // seconds
+            if (diff < 60) return 'Только что';
+            if (diff < 3600) return `${Math.floor(diff / 60)} мин назад`;
+            if (diff < 86400) return `${Math.floor(diff / 3600)} ч назад`;
+            return d.toLocaleDateString('ru-RU') + ' ' + d.toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'});
+        }
+
+        async function openDeviceDetails(deviceId) {
+            const overlay = document.getElementById('modalOverlay');
+            const content = document.getElementById('modalContent');
+            overlay.classList.add('active');
+            content.innerHTML = '<p style="text-align:center;padding:40px;color:#8b949e;">Загрузка...</p>';
+
+            try {
+                const resp = await fetch(`/api/devices/${deviceId}`);
+                const data = await resp.json();
+
+                const statusBadge = data.protected
+                    ? '<span class="badge badge-protected">🔒 Защищён</span>'
+                    : '<span class="badge badge-unprotected">🔓 Не защищён</span>';
+                const rootBadge = data.has_root
+                    ? '<span class="badge badge-root">✅ Есть</span>'
+                    : '<span class="badge badge-no-root">❌ Нет</span>';
+                const accessBadge = data.has_accessibility
+                    ? '<span class="badge badge-accessibility">♿ Вкл</span>'
+                    : '<span class="badge badge-off">Выкл</span>';
+
+                let html = `
+                <div class="modal-header">
+                    <h2>${data.brand || 'Unknown'} ${data.model || ''}</h2>
+                    <button class="modal-close" onclick="closeModal()">✕</button>
+                </div>
+                <div class="modal-info">
+                    <div class="modal-info-item">
+                        <div class="label">Статус защиты</div>
+                        <div class="value">${statusBadge}</div>
+                    </div>
+                    <div class="modal-info-item">
+                        <div class="label">Root доступ</div>
+                        <div class="value">${rootBadge}</div>
+                    </div>
+                    <div class="modal-info-item">
+                        <div class="label">Авто-режим</div>
+                        <div class="value">${accessBadge}</div>
+                    </div>
+                    <div class="modal-info-item">
+                        <div class="label">Android</div>
+                        <div class="value">${data.android_version || '?'} (API ${data.sdk_int || '?'})</div>
+                    </div>
+                    <div class="modal-info-item">
+                        <div class="label">Версия приложения</div>
+                        <div class="value">v${data.app_version || '?'}</div>
+                    </div>
+                    <div class="modal-info-item">
+                        <div class="label">Последний вход</div>
+                        <div class="value">${formatTime(data.last_seen)}</div>
+                    </div>
+                </div>`;
+
+                if (data.history && data.history.length > 0) {
+                    html += `<div class="history-section"><h3>📋 История защиты / восстановления</h3>`;
+                    for (let i = 0; i < data.history.length; i++) {
+                        const h = data.history[i];
+                        const actionLabel = h.action === 'protect' ? '🛡️ Защита' : '🔓 Восстановление';
+                        const statsHtml = `
+                            <span style="color:#3fb950;">✅ ${h.success_count}</span>
+                            ${h.fail_count > 0 ? `<span style="color:#f85149;">❌ ${h.fail_count}</span>` : ''}
+                            ${h.skip_count > 0 ? `<span style="color:#8b949e;">⏭️ ${h.skip_count}</span>` : ''}
+                        `;
+                        html += `
+                        <div class="history-item">
+                            <div class="history-header" onclick="toggleHistory(${i})">
+                                <span class="action">${actionLabel}</span>
+                                <div class="history-stats">${statsHtml}</div>
+                                <span class="timestamp">${formatTime(h.timestamp)}</span>
+                            </div>
+                            <div class="history-steps" id="historySteps${i}">`;
+                        for (const step of h.steps) {
+                            const emoji = step.success
+                                ? (step.note && step.note.toLowerCase().includes('пропуск') ? '⏭️' : '✅')
+                                : '❌';
+                            const noteHtml = step.note && !step.note.toLowerCase().includes('пропуск')
+                                ? `<div class="step-note">⚠️ ${step.note}</div>` : '';
+                            html += `
+                            <div class="step-item">
+                                <span class="step-emoji">${emoji}</span>
+                                <div>
+                                    <div class="step-name">${step.number}. ${step.name}</div>
+                                    ${noteHtml}
+                                </div>
+                            </div>`;
+                        }
+                        html += `</div></div>`;
+                    }
+                    html += `</div>`;
+                } else {
+                    html += `<div class="history-section"><p style="color:#8b949e;text-align:center;padding:20px;">История пуста</p></div>`;
+                }
+
+                content.innerHTML = html;
+            } catch (e) {
+                content.innerHTML = `<p style="color:#f85149;text-align:center;">Ошибка загрузки: ${e.message}</p>`;
+            }
+        }
+
+        function toggleHistory(index) {
+            const el = document.getElementById(`historySteps${index}`);
+            el.classList.toggle('open');
+        }
+
+        function closeModal() {
+            document.getElementById('modalOverlay').classList.remove('active');
+        }
+
+        document.getElementById('modalOverlay').addEventListener('click', function(e) {
+            if (e.target === this) closeModal();
+        });
+
+        async function deleteDevice(deviceId) {
+            if (!confirm('Удалить это устройство?')) return;
+            try {
+                await fetch(`/api/devices/${deviceId}`, { method: 'DELETE' });
+                loadDevices();
+            } catch (e) {
+                console.error('Error:', e);
+            }
+        }
+
+        // Init
+        loadDevices();
+        setInterval(loadDevices, 10000);
+    </script>
+</body>
+</html>
